@@ -1,0 +1,3 @@
+#files and folder which won't be push to git
+.vscode/
+__pycyche__/

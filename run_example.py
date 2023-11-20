@@ -1,0 +1,43 @@
+from bayesian_network import Node, BayesianNetwork
+
+# Combine two nodes if the parent node has multiple output
+from combine_node_multi_outtput import combine_nodes_and_update_network_multi_output
+
+# Combine two nodes if the parent node has single output
+from combine_node_single_output import combine_nodes_single_output
+
+# Very basic function to combine two nodes
+from combine_node_basic_function import calculate_combined_cpd_generic
+
+# 1. Create Nodes with their possible states
+A = Node(name="A")
+B = Node(name="B")
+C = Node(name="C")
+D = Node(name="D")
+
+# 2. Setting parent-child relationships
+C.add_parent(A)
+C.add_parent(B)
+D.add_parent(C)
+
+
+# 3. Setting CPDs
+A.set_cpd({0: 1/3, 1: 2/3})
+B.set_cpd({0: 2/5, 1: 3/5})
+C.set_cpd({
+    'A=0,B=0': {0: 1, 1: 0},
+    'A=0,B=1': {0: 1/5, 1: 4/5},
+    'A=1,B=0': {0: 1/2, 1: 1/2},
+    'A=1,B=1': {0: 1/4, 1: 3/4}
+})
+D.set_cpd({
+    'C=0': {0: 7/8, 1: 1/8},
+    'C=1': {0: 1/2, 1: 1/2}
+})
+
+
+# Creating the Bayesian Network
+network2 = BayesianNetwork([A, B, C, D])
+
+combined_cpd = calculate_combined_cpd_generic(network2, 'C', 'D')
+print(combined_cpd)

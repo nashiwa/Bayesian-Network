@@ -1,7 +1,8 @@
 import itertools
 
+
 class Node:
-    def __init__(self, name, states=[0,1]):
+    def __init__(self, name, states=[0, 1]):
         self.name = name
         self.parents = []   # List of parent nodes
         self.children = []  # List of child nodes
@@ -23,22 +24,24 @@ class Node:
 
     def get_prob(self, value, evidence, network):
         """Return probability of a given value based on provided evidence."""
-        
+
         # If the node has parent nodes
         if self.parents:
             parent_values = []
-            
+
             for parent in self.parents:
                 if parent.name in evidence:  # Parent's value is provided in the evidence
-                    parent_values.append(parent.name + '=' + str(evidence[parent.name]))
+                    parent_values.append(
+                        parent.name + '=' + str(evidence[parent.name]))
                 else:  # Estimate the most probable state for the parent based on other evidence
                     parent_probs = network.query(parent.name, evidence)
                     most_likely_state = max(parent_probs, key=parent_probs.get)
-                    parent_values.append(parent.name + '=' + str(most_likely_state))
-            
+                    parent_values.append(
+                        parent.name + '=' + str(most_likely_state))
+
             key = ','.join(parent_values)
             return self.cpd[key][value]
-        else:  
+        else:
             # Node does not have parents, so we return its marginal probability
             return self.cpd[value]
 
@@ -57,7 +60,7 @@ class BayesianNetwork:
     def query(self, query, evidence={}):
         """Calculate the probability distribution of a node based on given evidence."""
         node = self.get_node(query)
-        
+
         if not node:
             return None  # Node not found in the network
 
@@ -68,22 +71,43 @@ class BayesianNetwork:
             total_prob = {state: 0 for state in node.states}
 
             # List all possible combinations of parent states
-            parent_states_combinations = list(itertools.product(*[parent.states for parent in node.parents]))
+            parent_states_combinations = list(itertools.product(
+                *[parent.states for parent in node.parents]))
 
             for state_combo in parent_states_combinations:
-                parent_evidence = {parent.name: state for parent, state in zip(node.parents, state_combo)}
+                parent_evidence = {parent.name: state for parent,
+                                   state in zip(node.parents, state_combo)}
                 prob_product = 1
 
                 # Calculate joint probability of this particular combination of parent states
                 for parent, state in zip(node.parents, state_combo):
                     if parent.name not in evidence:
-                        prob_product *= self.query(parent.name, evidence)[state]
+                        prob_product *= self.query(parent.name,
+                                                   evidence)[state]
                     else:
                         prob_product *= parent.get_prob(state, evidence, self)
 
                 for state in node.states:
-                    total_prob[state] += prob_product * node.get_prob(state, {**evidence, **parent_evidence}, self)
+                    total_prob[state] += prob_product * \
+                        node.get_prob(
+                            state, {**evidence, **parent_evidence}, self)
 
             # Adjust the probabilities so they total to 1
             norm_factor = sum(total_prob.values())
             return {state: prob / norm_factor for state, prob in total_prob.items()}
+
+    def add_node(self, node):
+        """Add a node to the network."""
+        if node not in self.nodes:
+            self.nodes.append(node)
+
+    def remove_node(self, node_name):
+        """Remove a node from the network by its name."""
+        node = self.get_node(node_name)
+        if node:
+            # Remove any parent-child links
+            for parent in node.parents:
+                parent.children.remove(node)
+            for child in node.children:
+                child.parents.remove(node)
+            self.nodes.remove(node)
