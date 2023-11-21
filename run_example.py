@@ -9,6 +9,10 @@ from combine_node_single_output import combine_nodes_single_output
 # Very basic function to combine two nodes
 from combine_node_basic_function import calculate_combined_cpd_generic
 
+# pass a network to find which nodes can be minimized
+from find_node_to_minimize import find_pair_greedy_degree, find_pair_greedy_fill_in
+
+
 # 1. Create Nodes with their possible states
 A = Node(name="A")
 B = Node(name="B")
@@ -35,9 +39,11 @@ D.set_cpd({
     'C=1': {0: 1/2, 1: 1/2}
 })
 
-
 # Creating the Bayesian Network
-network2 = BayesianNetwork([A, B, C, D])
+test_network = BayesianNetwork([A, B, C, D])
 
-combined_cpd = calculate_combined_cpd_generic(network2, 'C', 'D')
+nodes_to_minimize = find_pair_greedy_degree(test_network)
+print(nodes_to_minimize)
+
+combined_cpd = calculate_combined_cpd_generic(test_network, 'C', 'D')
 print(combined_cpd)
