@@ -1,10 +1,13 @@
 from bayesian_network import Node, BayesianNetwork
 
+# Function to see a network structure
+from common_function import print_network_structure
+
 # Combine two nodes if the parent node has multiple output
 from combine_node_multi_outtput import combine_nodes_and_update_network_multi_output
 
 # Combine two nodes if the parent node has single output
-from combine_node_single_output import combine_nodes_single_output
+from combine_node_single_output import combine_nodes_and_update_network_single_output
 
 # Very basic function to combine two nodes
 from combine_node_basic_function import calculate_combined_cpd_generic
@@ -42,8 +45,9 @@ D.set_cpd({
 # Creating the Bayesian Network
 test_network = BayesianNetwork([A, B, C, D])
 
+modified_test_network = combine_nodes_and_update_network_single_output(test_network, 'C', 'D')
+print_network_structure(modified_test_network)
+
+
 nodes_to_minimize = find_pair_greedy_degree(test_network)
 print(nodes_to_minimize)
-
-combined_cpd = calculate_combined_cpd_generic(test_network, 'C', 'D')
-print(combined_cpd)

@@ -48,8 +48,6 @@ def calculate_combined_cpd_generic_multi_output(network, parent_node_name, child
                 combined_state_key = f'{child_node.name}={child_state},{parent_node.name}={parent_state}'
 
                 combined_cpd[combined_state_key] = joint_prob
-    print('Printing Combined CPD: calculate_combined_cpd_generic_multi_output ')
-    print(combined_cpd)
     return combined_cpd
 
 
@@ -102,8 +100,6 @@ def calculate_combined_cpd_generic_multi_output_pre_combined_parent(network, par
 
                 combined_state_key = f'{child_node.name}={d_state},{previouly_combined_child}={c_state}'
                 combined_cpd[combined_state_key] = joint_prob
-    print('Printing Combined CPD: calculate_combined_cpd_generic_multi_output_pre_combined_parent ')
-    print(combined_cpd)
     return combined_cpd
 
 
@@ -115,7 +111,7 @@ def combine_nodes_and_update_network_multi_output(network, parent_node_name, chi
         combined_cpd = calculate_combined_cpd_generic_multi_output(
             network, parent_node_name, child_node_name)
         combined_node_name = child_node_name + parent_node_name
-        print(f'New node name from if: {combined_node_name}')
+        print(f'Combined CPD of {combined_node_name}: {combined_cpd}')
     else:
         combined_cpd = calculate_combined_cpd_generic_multi_output_pre_combined_parent(
             network, parent_node_name, child_node_name)
@@ -125,7 +121,7 @@ def combine_nodes_and_update_network_multi_output(network, parent_node_name, chi
         previouly_combined_child = parent_node_name.replace(
             original_parent_of_child, '')
         combined_node_name = child_node_name + previouly_combined_child
-        print(f'New node name from else: {combined_node_name}')
+        print(f'Combined CPD of {combined_node_name}: {combined_cpd}')
 
     # Create a new combined node
     combined_node = Node(name=combined_node_name, states=[

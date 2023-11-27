@@ -1,5 +1,7 @@
 import itertools
-from common_function import find_grandparents
+from common_function import find_grandparents, generate_combined_states
+from bayesian_network import Node
+
 
 def calculate_combined_cpd_no_grnadparent_multiple_parents(network, child_node_name):
     # Retrieve the child node from the network using the provided name
@@ -34,80 +36,103 @@ def calculate_combined_cpd_no_grnadparent_multiple_parents(network, child_node_n
 
 
 def calculate_combined_cpd_with_multiple_grandparents_not_connected_parents(network, child_node_name):
-    node = network.get_node(child_node_name)
-    if not node.parents:
-        return node.cpd
+    child_node = network.get_node(child_node_name)
 
-    # Identifying all the grandparents (parents of the node's parents)
-    grandparents = set()
-    for parent in node.parents:
-        grandparents.update(parent.parents)
+    # Find all unique grandparents
+    grandparents = find_grandparents(child_node)
 
-    # Create a list of all possible combinations of states for the grandparents
-    gp_combinations = list(itertools.product(
-        *[gp.states for gp in grandparents]))
+    # Generate combined states based on the number of grandparents
+    combined_states = generate_combined_states(grandparents)
 
-    # Create a dictionary to hold the combined CPD with keys for each grandparent state combination
-    combined_cpd = {
-        ",".join(f"{gp.name}={state}" for gp, state in zip(grandparents, gp_combination)): {0: 0, 1: 0}
-        for gp_combination in gp_combinations
-    }
+    combined_cpd = {}
 
-    # Iterate through each combination of grandparent states
-    for gp_combination in gp_combinations:
-        gp_state_dict = {gp.name: state for gp,
-                         state in zip(grandparents, gp_combination)}
+    # Iterate through each combined grandparent state
+    for combined_state in combined_states:
+        combined_cpd[combined_state] = {}
 
-        # Create a dictionary for the combined parent states
-        combined_parent_cpd = {}
-        for parent in node.parents:
-            combined_parent_cpd[parent.name] = {}
-            for parent_state in parent.states:
-                # Calculate the probability of the parent being in the current state, given the grandparent states
-                if parent.parents:
-                    # If the parent has grandparents, calculate the conditional probability
-                    prob = 0
-                    for grandparent in parent.parents:
-                        prob += parent.cpd[f"{grandparent.name}={gp_state_dict[grandparent.name]}"][parent_state]
-                    prob /= len(parent.parents)
-                else:
-                    # If the parent has no grandparents, use its marginal probability
-                    prob = parent.cpd[parent_state]
-                combined_parent_cpd[parent.name][parent_state] = prob
+        # Split the combined state into individual grandparent states
+        gp_state_dict = {state.split('=')[0]: int(
+            state.split('=')[1]) for state in combined_state.split(',')}
 
-        # Calculate the probability of the node for each of its states
-        for state in node.states:
-            # Calculate the probability of the node being in the current state, given the parent states
+        # Calculate the probability for each state of the child node
+        for state in child_node.states:
             prob = 0
-            for parent_combination in itertools.product(*[parent.states for parent in node.parents]):
-                parent_comb_key = ",".join(f"{node.parents[i].name}={parent_combination[i]}"
-                                           for i in range(len(node.parents)))
-                prob_comb = node.cpd[parent_comb_key][state]
-                for i, parent_state in enumerate(parent_combination):
-                    prob_comb *= combined_parent_cpd[node.parents[i].name][parent_state]
-                prob += prob_comb
+            for parent_state_combination in itertools.product(*[parent.states for parent in child_node.parents]):
+                # Create a dictionary for the parent states
+                parent_state_dict = {parent.name: parent_state for parent, parent_state in zip(
+                    child_node.parents, parent_state_combination)}
+
+                # Calculate the joint probability of the parent states
+                parent_prob_product = 1
+                for parent in child_node.parents:
+                    if parent.parents:
+                        # Construct the CPD key for the parent considering all of its parents
+                        parent_cpd_key = ','.join(
+                            [f'{gp.name}={gp_state_dict[gp.name]}' for gp in parent.parents])
+                    else:
+                        # If the parent has no grandparents and no CPD dictionary, use its marginal probability
+                        parent_prob_product *= parent.cpd[parent_state_dict[parent.name]]
+                        continue
+
+                    parent_prob_product *= parent.cpd[parent_cpd_key][parent_state_dict[parent.name]]
+
+                # Update the probability for the child state
+                child_cpd_key = ','.join(
+                    [f'{parent_name}={parent_state}' for parent_name, parent_state in parent_state_dict.items()])
+                prob += parent_prob_product * \
+                    child_node.cpd[child_cpd_key][state]
 
             # Assign the calculated probability to the combined CPD
-            combined_cpd_key = ",".join(
-                f"{gp.name}={gp_state_dict[gp.name]}" for gp in grandparents)
-            combined_cpd[combined_cpd_key][state] = prob
+            combined_cpd[combined_state][state] = prob
 
-        # Normalize the probabilities for the current grandparent state combination
-        total_prob = sum(combined_cpd[combined_cpd_key].values())
-        for state in node.states:
-            combined_cpd[combined_cpd_key][state] /= total_prob
+    # Normalize the probabilities for each combined grandparent state
+    for combined_state in combined_cpd:
+        total_prob = sum(combined_cpd[combined_state].values())
+        for state in combined_cpd[combined_state]:
+            combined_cpd[combined_state][state] /= total_prob
 
     return combined_cpd
 
 
-def combine_nodes_single_output(network, parent_node_name, child_node_name):
+def combine_nodes_and_update_network_single_output(network, parent_node_name, child_node_name):
     child_node = network.get_node(child_node_name)
     grandparents = find_grandparents(child_node)
+    parent_str = ''
+    for parent in child_node.parents:
+        parent_str += parent.name
 
     # If there are no grandparents, calculate the CPD directly
     if not grandparents:
-        print('no grandparents')
-        return calculate_combined_cpd_no_grnadparent_multiple_parents(network, child_node_name)
+        combined_cpd = calculate_combined_cpd_no_grnadparent_multiple_parents(
+            network, child_node_name)
+        combined_node_name = child_node_name + parent_str
+        print(f'Combined CPD of {combined_node_name}: {combined_cpd}')
     else:
-        print('grandparents')
-        return calculate_combined_cpd_with_multiple_grandparents_not_connected_parents(network, child_node_name)
+        combined_cpd = calculate_combined_cpd_with_multiple_grandparents_not_connected_parents(
+            network, child_node_name)
+        combined_node_name = child_node_name + parent_str
+        print(f'Combined CPD of {combined_node_name}: {combined_cpd}')
+
+    # Create a new combined node
+    combined_node = Node(name=combined_node_name)
+    combined_node.set_cpd(combined_cpd)
+
+    for parent in child_node.parents:
+        for grandparent in parent.parents:
+            combined_node.parents.append(grandparent)
+            grandparent.children.append(combined_node)
+            grandparent.children.remove(parent)
+        network.nodes.remove(parent)
+
+    # Remove the original parent and child nodes from the network
+    network.nodes.remove(child_node)
+
+    # Add the combined node to the network
+    network.nodes.append(combined_node)
+
+    # If the child node has any children, update their parent to the combined node
+    for child in child_node.children:
+        child.parents = [combined_node]
+        combined_node.children.append(child)
+
+    return network

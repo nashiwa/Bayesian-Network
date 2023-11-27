@@ -1,5 +1,6 @@
 import itertools
 
+
 def print_network_structure(network):
     for node in network.nodes:
         # Fetching the names of the parent and child nodes
@@ -11,16 +12,8 @@ def print_network_structure(network):
         children_str = ', '.join(child_names) if child_names else "No children"
 
         # Printing the details for each node
-        print(f"Node '{node.name}': Parents -> [{parents_str}], Children -> [{children_str}]")
-
-def find_grandparents(child_node):
-    """Find all unique grandparents (parents of parents) of the given child node."""
-    grandparents = []
-    for parent in child_node.parents:
-        for grandparent in parent.parents:
-            if grandparent not in grandparents:
-                grandparents.append(grandparent)
-    return grandparents
+        print(
+            f"Node '{node.name}': Parents -> [{parents_str}], Children -> [{children_str}]")
 
 
 def generate_combined_states(grandparents):
@@ -35,3 +28,13 @@ def generate_combined_states(grandparents):
 
     # Convert the tuples to comma-separated strings for easier indexing
     return [','.join(state_tuple) for state_tuple in combined_states]
+
+
+def find_grandparents(child_node):
+    """Find all unique grandparents (parents of parents) of the given child node."""
+    grandparents = []
+    for parent in child_node.parents:
+        for grandparent in parent.parents:
+            if grandparent not in grandparents:
+                grandparents.append(grandparent)
+    return grandparents
